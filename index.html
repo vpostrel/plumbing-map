@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>U.S. Plumbing Access by State (1940-1990)</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: #f5f5f5;
+  padding: 20px;
+}
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+h1 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 2em;
+}
+.subtitle {
+  text-align: center;
+  color: #666;
+  margin-bottom: 30px;
+}
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+.year-btn {
+  padding: 12px 24px;
+  border: none;
+  background: #e5e7eb;
+  color: #374151;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+.year-btn:hover {
+  background: #d1d5db;
+}
+.year-btn.active {
+  background: #dc2626;
+  color: white;
+  box-shadow: 0 4px 6px rgba(220, 38, 38, 0.3);
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+.stat-card {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+}
+.stat-card:nth-child(2) {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+}
+.stat-card:nth-child(3) {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+}
+.stat-value {
+  font-size: 36px;
+  font-weight: bold;
+  color: #dc2626;
+}
+.stat-card:nth-child(3) .stat-value {
+  color: #16a34a;
+}
+.stat-label {
+  font-size: 14px;
+  color: #666;
+  margin-top: 5px;
+}
+.map-container {
+  position: relative;
+  margin-bottom: 30px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.map-container svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.tooltip {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  border: 1px solid #e5e7eb;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.tooltip.visible {
+  opacity: 1;
+}
+.tooltip-state {
+  font-weight: bold;
+  font-size: 18px;
+  margin-bottom: 5px;
+}
+.tooltip-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #dc2626;
+  margin-bottom: 5px;
+}
+.tooltip-label {
+  font-size: 12px;
+  color: #666;
+}
+.legend {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 20px;
+}
+.legend h3 {
+  text-align: center;
+  margin-bottom: 15px;
+  font-size: 18px;
+  color: #333;
+}
+.legend-items {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.legend-box {
+  width: 35px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+.legend-label {
+  font-size: 13px;
+  color: #666;
+}
+path.state {
+  transition: opacity 0.2s;
+  cursor: pointer;
+}
+path.state:hover {
+  opacity: 0.8;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Lack of Complete Plumbing in U.S. Households</h1>
+  <p class="subtitle">Percentage of housing units lacking complete plumbing facilities by state</p>
+  
+  <div class="controls">
+    <button class="year-btn active" onclick="showYear('1940')">1940</button>
+    <button class="year-btn" onclick="showYear('1950')">1950</button>
+    <button class="year-btn" onclick="showYear('1960')">1960</button>
+    <button class="year-btn" onclick="showYear('1970')">1970</button>
+    <button class="year-btn" onclick="showYear('1980')">1980</button>
+    <button class="year-btn" onclick="showYear('1990')">1990</button>
+  </div>
+  
+  <div class="stats" id="stats"></div>
+  
+  <div class="map-container">
+    <svg id="map" viewBox="0 0 960 540"></svg>
+    <div class="tooltip" id="tooltip">
+      <div class="tooltip-state" id="tooltipState"></div>
+      <div class="tooltip-value" id="tooltipValue"></div>
+      <div class="tooltip-label">lacking plumbing</div>
+    </div>
+  </div>
+  
+  <div class="legend">
+    <h3>Color Legend</h3>
+    <div class="legend-items">
+      <div class="legend-item">
+        <div class="legend-box" style="background: #fee5d9;"></div>
+        <div class="legend-label">&lt; 1%</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background: #fcbba1;"></div>
+        <div class="legend-label">1-2%</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background: #fc9272;"></div>
+        <div class="legend-label">2-5%</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background: #fb6a4a;"></div>
+        <div class="legend-label">5-10%</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background: #ef3b2c;"></div>
+        <div class="legend-label">10-20%</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background: #cb181d;"></div>
+        <div class="legend-label">20-40%</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background: #a50f15;"></div>
+        <div class="legend-label">40-60%</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background: #67000d;"></div>
+        <div class="legend-label">≥ 60%</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const data = {
+  '1940': {'AL':80.3,'AZ':53.5,'AR':83.5,'CA':16.6,'CO':53.7,'CT':18.8,'DE':40.3,'DC':17.7,'FL':46.2,'GA':76.3,'ID':61.6,'IL':36.2,'IN':54.4,'IA':58.2,'KS':60.1,'KY':73.8,'LA':67.2,'ME':55.0,'MD':39.5,'MA':17.3,'MI':37.5,'MN':54.5,'MS':86.0,'MO':57.0,'MT':63.1,'NE':57.7,'NV':43.7,'NH':39.2,'NJ':18.6,'NM':72.7,'NY':17.8,'NC':76.3,'ND':80.4,'OH':38.1,'OK':67.2,'OR':38.8,'PA':37.2,'RI':23.8,'SC':78.8,'SD':74.6,'TN':75.6,'TX':62.1,'UT':39.3,'VT':41.4,'VA':64.9,'WA':35.5,'WV':65.6,'WI':48.7,'WY':59.1,'AK':null,'HI':null},
+  '1950': {'AL':67.8,'AK':null,'AZ':34.8,'AR':70.5,'CA':11.8,'CO':37.7,'CT':16.8,'DE':29.5,'DC':11.4,'FL':39.0,'GA':63.4,'HI':null,'ID':36.7,'IL':31.7,'IN':42.8,'IA':48.0,'KS':41.2,'KY':63.7,'LA':58.3,'ME':46.6,'MD':27.5,'MA':19.1,'MI':28.0,'MN':46.6,'MS':74.0,'MO':50.7,'MT':42.1,'NE':42.7,'NV':23.2,'NH':34.2,'NJ':14.9,'NM':47.5,'NY':14.0,'NC':64.8,'ND':65.9,'OH':28.9,'OK':47.0,'OR':23.9,'PA':26.9,'RI':37.1,'SC':65.1,'SD':61.3,'TN':63.3,'TX':45.4,'UT':18.4,'VT':33.1,'VA':49.6,'WA':19.1,'WV':53.9,'WI':40.8,'WY':38.1},
+  '1960': {'AL':38.5,'AK':29.4,'AZ':13.4,'AR':43.2,'CA':5.1,'CO':14.1,'CT':7.3,'DE':12.4,'DC':7.7,'FL':15.0,'GA':33.7,'HI':16.8,'ID':14.7,'IL':13.4,'IN':17.3,'IA':19.8,'KS':15.9,'KY':39.7,'LA':29.5,'ME':30.5,'MD':10.5,'MA':9.6,'MI':11.7,'MN':22.1,'MS':47.8,'MO':25.9,'MT':20.4,'NE':17.5,'NV':9.8,'NH':16.7,'NJ':6.5,'NM':20.4,'NY':8.0,'NC':35.6,'ND':33.1,'OH':12.8,'OK':20.8,'OR':9.9,'PA':11.3,'RI':13.6,'SC':38.5,'SD':30.3,'TN':34.9,'TX':19.9,'UT':6.1,'VT':18.7,'VA':27.4,'WA':9.8,'WV':32.3,'WI':17.2,'WY':15.8},
+  '1970': {'AL':16.9,'AK':17.2,'AZ':5.2,'AR':18.4,'CA':2.1,'CO':5.0,'CT':2.7,'DE':5.1,'DC':2.3,'FL':5.1,'GA':13.2,'HI':5.6,'ID':5.3,'IL':4.8,'IN':6.5,'IA':7.5,'KS':5.6,'KY':20.8,'LA':11.5,'ME':15.4,'MD':4.4,'MA':3.6,'MI':4.4,'MN':8.2,'MS':24.3,'MO':9.7,'MT':9.0,'NE':6.1,'NV':3.2,'NH':7.0,'NJ':2.5,'NM':10.6,'NY':3.2,'NC':15.6,'ND':13.8,'OH':5.2,'OK':7.1,'OR':3.6,'PA':5.1,'RI':3.1,'SC':18.6,'SD':13.6,'TN':14.8,'TX':7.7,'UT':2.7,'VT':8.4,'VA':13.4,'WA':3.4,'WV':18.3,'WI':7.2,'WY':5.9},
+  '1980': {'AL':5.2,'AK':12.2,'AZ':2.6,'AR':5.3,'CA':1.4,'CO':1.8,'CT':1.4,'DE':2.0,'DC':2.4,'FL':1.2,'GA':3.8,'HI':2.3,'ID':2.0,'IL':2.0,'IN':2.1,'IA':2.4,'KS':2.0,'KY':7.5,'LA':3.1,'ME':5.8,'MD':2.1,'MA':1.7,'MI':1.8,'MN':2.8,'MS':7.2,'MO':3.0,'MT':3.4,'NE':1.9,'NV':1.4,'NH':2.9,'NJ':1.7,'NM':4.8,'NY':2.9,'NC':5.2,'ND':4.2,'OH':2.0,'OK':2.0,'OR':1.8,'PA':2.5,'RI':1.9,'SC':5.1,'SD':4.3,'TN':4.6,'TX':2.6,'UT':1.1,'VT':3.3,'VA':5.1,'WA':1.7,'WV':6.9,'WI':2.5,'WY':2.3},
+  '1990': {'AL':1.6,'AK':12.5,'AZ':1.9,'AR':1.8,'CA':0.6,'CO':0.8,'CT':0.4,'DE':0.6,'DC':0.8,'FL':0.5,'GA':1.1,'HI':1.1,'ID':1.5,'IL':0.7,'IN':0.7,'IA':0.9,'KS':0.8,'KY':2.9,'LA':1.3,'ME':3.5,'MD':0.7,'MA':0.5,'MI':0.8,'MN':1.3,'MS':2.2,'MO':1.2,'MT':1.9,'NE':0.8,'NV':0.5,'NH':1.2,'NJ':0.5,'NM':3.2,'NY':0.9,'NC':1.5,'ND':2.0,'OH':0.8,'OK':1.0,'OR':0.9,'PA':1.0,'RI':0.5,'SC':1.4,'SD':2.0,'TN':1.6,'TX':1.2,'UT':1.0,'VT':2.3,'VA':1.8,'WA':0.9,'WV':3.2,'WI':1.4,'WY':1.6}
+};
+
+const nationalAverages = {
+  '1940': 45.3,
+  '1950': 35.5,
+  '1960': 16.8,
+  '1970': 6.9,
+  '1980': 2.7,
+  '1990': 1.1
+};
+
+const statePaths = {
+  'WA': 'M 50,30 L 130,30 L 130,90 L 50,90 Z',
+  'OR': 'M 50,95 L 130,95 L 130,150 L 50,150 Z',
+  'CA': 'M 40,155 L 120,155 L 120,280 L 40,280 Z',
+  'ID': 'M 135,35 L 195,35 L 195,150 L 135,150 Z',
+  'NV': 'M 125,155 L 185,155 L 185,250 L 125,250 Z',
+  'MT': 'M 200,20 L 320,20 L 320,90 L 200,90 Z',
+  'WY': 'M 200,95 L 300,95 L 300,165 L 200,165 Z',
+  'UT': 'M 190,170 L 260,170 L 260,250 L 190,250 Z',
+  'CO': 'M 265,170 L 360,170 L 360,250 L 265,250 Z',
+  'AZ': 'M 125,255 L 210,255 L 210,350 L 125,350 Z',
+  'NM': 'M 215,255 L 310,255 L 310,365 L 215,365 Z',
+  'ND': 'M 325,20 L 425,20 L 425,85 L 325,85 Z',
+  'SD': 'M 325,90 L 425,90 L 425,155 L 325,155 Z',
+  'NE': 'M 325,160 L 455,160 L 455,220 L 325,220 Z',
+  'KS': 'M 330,225 L 460,225 L 460,285 L 330,285 Z',
+  'OK': 'M 330,290 L 460,290 L 460,350 L 330,350 Z',
+  'TX': 'M 315,355 L 450,355 L 450,490 L 315,490 Z',
+  'MN': 'M 430,20 L 520,20 L 520,130 L 430,130 Z',
+  'IA': 'M 460,135 L 545,135 L 545,200 L 460,200 Z',
+  'MO': 'M 460,205 L 555,205 L 555,285 L 460,285 Z',
+  'AR': 'M 465,290 L 555,290 L 555,360 L 465,360 Z',
+  'LA': 'M 465,365 L 555,365 L 555,450 L 465,450 Z',
+  'WI': 'M 525,25 L 595,25 L 595,130 L 525,130 Z',
+  'IL': 'M 550,135 L 615,135 L 615,260 L 550,260 Z',
+  'MS': 'M 560,290 L 615,290 L 615,440 L 560,440 Z',
+  'IN': 'M 620,140 L 670,140 L 670,250 L 620,250 Z',
+  'KY': 'M 620,255 L 710,255 L 710,300 L 620,300 Z',
+  'TN': 'M 620,305 L 720,305 L 720,350 L 620,350 Z',
+  'AL': 'M 620,355 L 685,355 L 685,455 L 620,455 Z',
+  'MI': 'M 600,35 L 665,35 L 665,135 L 600,135 Z',
+  'OH': 'M 675,145 L 735,145 L 735,255 L 675,255 Z',
+  'WV': 'M 715,260 L 770,260 L 770,305 L 715,305 Z',
+  'VA': 'M 725,310 L 810,310 L 810,355 L 725,355 Z',
+  'NC': 'M 725,360 L 830,360 L 830,405 L 725,405 Z',
+  'SC': 'M 690,410 L 765,410 L 765,460 L 690,460 Z',
+  'GA': 'M 690,360 L 755,360 L 755,455 L 690,455 Z',
+  'FL': 'M 760,410 L 810,410 L 810,520 L 760,520 Z',
+  'PA': 'M 740,150 L 830,150 L 830,210 L 740,210 Z',
+  'NY': 'M 740,50 L 845,50 L 845,145 L 740,145 Z',
+  'VT': 'M 850,55 L 880,55 L 880,125 L 850,125 Z',
+  'NH': 'M 885,60 L 915,60 L 915,125 L 885,125 Z',
+  'ME': 'M 885,20 L 930,20 L 930,130 L 885,130 Z',
+  'MA': 'M 850,130 L 920,130 L 920,165 L 850,165 Z',
+  'RI': 'M 905,130 L 930,130 L 930,160 L 905,160 Z',
+  'CT': 'M 850,170 L 905,170 L 905,200 L 850,200 Z',
+  'NJ': 'M 835,155 L 870,155 L 870,220 L 835,220 Z',
+  'DE': 'M 835,225 L 860,225 L 860,260 L 835,260 Z',
+  'MD': 'M 790,215 L 860,215 L 860,260 L 790,260 Z',
+  'DC': 'M 815,245 L 830,245 L 830,255 L 815,255 Z',
+  'AK': 'M 30,460 L 130,460 L 130,520 L 30,520 Z',
+  'HI': 'M 200,480 L 280,480 L 280,520 L 200,520 Z'
+};
+
+let currentYear = '1940';
+
+function getColor(pct) {
+  if (pct >= 60) return '#67000d';
+  if (pct >= 40) return '#a50f15';
+  if (pct >= 20) return '#cb181d';
+  if (pct >= 10) return '#ef3b2c';
+  if (pct >= 5) return '#fb6a4a';
+  if (pct >= 2) return '#fc9272';
+  if (pct >= 1) return '#fcbba1';
+  return '#fee5d9';
+}
+
+function drawMap() {
+  const svg = document.getElementById('map');
+  svg.innerHTML = '';
+  
+  const yearData = data[currentYear];
+  
+  Object.entries(statePaths).forEach(([state, path]) => {
+    const pct = yearData[state];
+    if (pct === null || pct === undefined) return;
+    
+    const color = getColor(pct);
+    
+    const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    pathEl.setAttribute('d', path);
+    pathEl.setAttribute('fill', color);
+    pathEl.setAttribute('stroke', '#fff');
+    pathEl.setAttribute('stroke-width', '2');
+    pathEl.setAttribute('class', 'state');
+    pathEl.addEventListener('mouseenter', () => showTooltip(state, pct));
+    pathEl.addEventListener('mouseleave', hideTooltip);
+    svg.appendChild(pathEl);
+  });
+  
+  Object.entries(statePaths).forEach(([state, path]) => {
+    const pct = yearData[state];
+    if (pct === null || pct === undefined) return;
+    
+    const match = path.match(/M (\d+),(\d+)/);
+    if (match) {
+      const x = parseInt(match[1]) + 25;
+      const y = parseInt(match[2]) + 25;
+      
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', x);
+      text.setAttribute('y', y);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('font-size', '11');
+      text.setAttribute('font-weight', 'bold');
+      text.setAttribute('fill', pct >= 20 ? '#fff' : '#000');
+      text.setAttribute('pointer-events', 'none');
+      text.textContent = state;
+      svg.appendChild(text);
+    }
+  });
+}
+
+function showTooltip(state, pct) {
+  const tooltip = document.getElementById('tooltip');
+  document.getElementById('tooltipState').textContent = state;
+  document.getElementById('tooltipValue').textContent = pct + '%';
+  tooltip.classList.add('visible');
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').classList.remove('visible');
+}
+
+function showYear(year) {
+  currentYear = year;
+  document.querySelectorAll('.year-btn').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  drawMap();
+  updateStats();
+}
+
+function updateStats() {
+  const yearData = data[currentYear];
+  const values = Object.values(yearData).filter(v => v !== null && v !== undefined);
+  const avg = nationalAverages[currentYear];
+  const max = Math.max(...values).toFixed(1);
+  const min = Math.min(...values).toFixed(1);
+  const maxState = Object.keys(yearData).find(k => yearData[k] === Math.max(...values));
+  const minState = Object.keys(yearData).find(k => yearData[k] === Math.min(...values));
+  
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-value">${avg}%</div>
+      <div class="stat-label">National Average</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${max}%</div>
+      <div class="stat-label">Highest (${maxState})</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${min}%</div>
+      <div class="stat-label">Lowest (${minState})</div>
+    </div>
+  `;
+}
+
+drawMap();
+updateStats();
+</script>
+</body>
+</html>
