@@ -97,6 +97,7 @@ h1 {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   overflow: hidden;
+  background: #f9fafb;
 }
 .map-container svg {
   width: 100%;
@@ -115,6 +116,7 @@ h1 {
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.2s;
+  z-index: 10;
 }
 .tooltip.visible {
   opacity: 1;
@@ -166,11 +168,15 @@ h1 {
   color: #666;
 }
 path.state {
+  stroke: #fff;
+  stroke-width: 1.5;
   transition: opacity 0.2s;
   cursor: pointer;
 }
 path.state:hover {
   opacity: 0.8;
+  stroke: #333;
+  stroke-width: 2;
 }
 </style>
 </head>
@@ -191,7 +197,7 @@ path.state:hover {
   <div class="stats" id="stats"></div>
   
   <div class="map-container">
-    <svg id="map" viewBox="0 0 960 540"></svg>
+    <svg id="map" viewBox="0 0 960 600"></svg>
     <div class="tooltip" id="tooltip">
       <div class="tooltip-state" id="tooltipState"></div>
       <div class="tooltip-value" id="tooltipValue"></div>
@@ -238,6 +244,8 @@ path.state:hover {
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <script>
 const data = {
   '1940': {'AL':80.3,'AZ':53.5,'AR':83.5,'CA':16.6,'CO':53.7,'CT':18.8,'DE':40.3,'DC':17.7,'FL':46.2,'GA':76.3,'ID':61.6,'IL':36.2,'IN':54.4,'IA':58.2,'KS':60.1,'KY':73.8,'LA':67.2,'ME':55.0,'MD':39.5,'MA':17.3,'MI':37.5,'MN':54.5,'MS':86.0,'MO':57.0,'MT':63.1,'NE':57.7,'NV':43.7,'NH':39.2,'NJ':18.6,'NM':72.7,'NY':17.8,'NC':76.3,'ND':80.4,'OH':38.1,'OK':67.2,'OR':38.8,'PA':37.2,'RI':23.8,'SC':78.8,'SD':74.6,'TN':75.6,'TX':62.1,'UT':39.3,'VT':41.4,'VA':64.9,'WA':35.5,'WV':65.6,'WI':48.7,'WY':59.1,'AK':null,'HI':null},
@@ -257,61 +265,22 @@ const nationalAverages = {
   '1990': 1.1
 };
 
-const statePaths = {
-  'WA': 'M 50,30 L 130,30 L 130,90 L 50,90 Z',
-  'OR': 'M 50,95 L 130,95 L 130,150 L 50,150 Z',
-  'CA': 'M 40,155 L 120,155 L 120,280 L 40,280 Z',
-  'ID': 'M 135,35 L 195,35 L 195,150 L 135,150 Z',
-  'NV': 'M 125,155 L 185,155 L 185,250 L 125,250 Z',
-  'MT': 'M 200,20 L 320,20 L 320,90 L 200,90 Z',
-  'WY': 'M 200,95 L 300,95 L 300,165 L 200,165 Z',
-  'UT': 'M 190,170 L 260,170 L 260,250 L 190,250 Z',
-  'CO': 'M 265,170 L 360,170 L 360,250 L 265,250 Z',
-  'AZ': 'M 125,255 L 210,255 L 210,350 L 125,350 Z',
-  'NM': 'M 215,255 L 310,255 L 310,365 L 215,365 Z',
-  'ND': 'M 325,20 L 425,20 L 425,85 L 325,85 Z',
-  'SD': 'M 325,90 L 425,90 L 425,155 L 325,155 Z',
-  'NE': 'M 325,160 L 455,160 L 455,220 L 325,220 Z',
-  'KS': 'M 330,225 L 460,225 L 460,285 L 330,285 Z',
-  'OK': 'M 330,290 L 460,290 L 460,350 L 330,350 Z',
-  'TX': 'M 315,355 L 450,355 L 450,490 L 315,490 Z',
-  'MN': 'M 430,20 L 520,20 L 520,130 L 430,130 Z',
-  'IA': 'M 460,135 L 545,135 L 545,200 L 460,200 Z',
-  'MO': 'M 460,205 L 555,205 L 555,285 L 460,285 Z',
-  'AR': 'M 465,290 L 555,290 L 555,360 L 465,360 Z',
-  'LA': 'M 465,365 L 555,365 L 555,450 L 465,450 Z',
-  'WI': 'M 525,25 L 595,25 L 595,130 L 525,130 Z',
-  'IL': 'M 550,135 L 615,135 L 615,260 L 550,260 Z',
-  'MS': 'M 560,290 L 615,290 L 615,440 L 560,440 Z',
-  'IN': 'M 620,140 L 670,140 L 670,250 L 620,250 Z',
-  'KY': 'M 620,255 L 710,255 L 710,300 L 620,300 Z',
-  'TN': 'M 620,305 L 720,305 L 720,350 L 620,350 Z',
-  'AL': 'M 620,355 L 685,355 L 685,455 L 620,455 Z',
-  'MI': 'M 600,35 L 665,35 L 665,135 L 600,135 Z',
-  'OH': 'M 675,145 L 735,145 L 735,255 L 675,255 Z',
-  'WV': 'M 715,260 L 770,260 L 770,305 L 715,305 Z',
-  'VA': 'M 725,310 L 810,310 L 810,355 L 725,355 Z',
-  'NC': 'M 725,360 L 830,360 L 830,405 L 725,405 Z',
-  'SC': 'M 690,410 L 765,410 L 765,460 L 690,460 Z',
-  'GA': 'M 690,360 L 755,360 L 755,455 L 690,455 Z',
-  'FL': 'M 760,410 L 810,410 L 810,520 L 760,520 Z',
-  'PA': 'M 740,150 L 830,150 L 830,210 L 740,210 Z',
-  'NY': 'M 740,50 L 845,50 L 845,145 L 740,145 Z',
-  'VT': 'M 850,55 L 880,55 L 880,125 L 850,125 Z',
-  'NH': 'M 885,60 L 915,60 L 915,125 L 885,125 Z',
-  'ME': 'M 885,20 L 930,20 L 930,130 L 885,130 Z',
-  'MA': 'M 850,130 L 920,130 L 920,165 L 850,165 Z',
-  'RI': 'M 905,130 L 930,130 L 930,160 L 905,160 Z',
-  'CT': 'M 850,170 L 905,170 L 905,200 L 850,200 Z',
-  'NJ': 'M 835,155 L 870,155 L 870,220 L 835,220 Z',
-  'DE': 'M 835,225 L 860,225 L 860,260 L 835,260 Z',
-  'MD': 'M 790,215 L 860,215 L 860,260 L 790,260 Z',
-  'DC': 'M 815,245 L 830,245 L 830,255 L 815,255 Z',
-  'AK': 'M 30,460 L 130,460 L 130,520 L 30,520 Z',
-  'HI': 'M 200,480 L 280,480 L 280,520 L 200,520 Z'
+const stateNameToAbbr = {
+  'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR', 'California': 'CA',
+  'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE', 'Florida': 'FL', 'Georgia': 'GA',
+  'Hawaii': 'HI', 'Idaho': 'ID', 'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA',
+  'Kansas': 'KS', 'Kentucky': 'KY', 'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD',
+  'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS', 'Missouri': 'MO',
+  'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV', 'New Hampshire': 'NH', 'New Jersey': 'NJ',
+  'New Mexico': 'NM', 'New York': 'NY', 'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH',
+  'Oklahoma': 'OK', 'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',
+  'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT', 'Vermont': 'VT',
+  'Virginia': 'VA', 'Washington': 'WA', 'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY',
+  'District of Columbia': 'DC'
 };
 
 let currentYear = '1940';
+let usData = null;
 
 function getColor(pct) {
   if (pct >= 60) return '#67000d';
@@ -324,50 +293,52 @@ function getColor(pct) {
   return '#fee5d9';
 }
 
+async function loadAndDrawMap() {
+  // Load US map data
+  const us = await d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json');
+  usData = us;
+  drawMap();
+}
+
 function drawMap() {
-  const svg = document.getElementById('map');
-  svg.innerHTML = '';
+  const svg = d3.select('#map');
+  svg.selectAll('*').remove();
+  
+  const width = 960;
+  const height = 600;
+  
+  const projection = d3.geoAlbersUsa()
+    .scale(1300)
+    .translate([width / 2, height / 2]);
+  
+  const path = d3.geoPath().projection(projection);
   
   const yearData = data[currentYear];
   
-  Object.entries(statePaths).forEach(([state, path]) => {
-    const pct = yearData[state];
-    if (pct === null || pct === undefined) return;
-    
-    const color = getColor(pct);
-    
-    const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    pathEl.setAttribute('d', path);
-    pathEl.setAttribute('fill', color);
-    pathEl.setAttribute('stroke', '#fff');
-    pathEl.setAttribute('stroke-width', '2');
-    pathEl.setAttribute('class', 'state');
-    pathEl.addEventListener('mouseenter', () => showTooltip(state, pct));
-    pathEl.addEventListener('mouseleave', hideTooltip);
-    svg.appendChild(pathEl);
-  });
+  const states = topojson.feature(usData, usData.objects.states);
   
-  Object.entries(statePaths).forEach(([state, path]) => {
-    const pct = yearData[state];
-    if (pct === null || pct === undefined) return;
-    
-    const match = path.match(/M (\d+),(\d+)/);
-    if (match) {
-      const x = parseInt(match[1]) + 25;
-      const y = parseInt(match[2]) + 25;
-      
-      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', x);
-      text.setAttribute('y', y);
-      text.setAttribute('text-anchor', 'middle');
-      text.setAttribute('font-size', '11');
-      text.setAttribute('font-weight', 'bold');
-      text.setAttribute('fill', pct >= 20 ? '#fff' : '#000');
-      text.setAttribute('pointer-events', 'none');
-      text.textContent = state;
-      svg.appendChild(text);
-    }
-  });
+  svg.selectAll('path')
+    .data(states.features)
+    .enter()
+    .append('path')
+    .attr('d', path)
+    .attr('class', 'state')
+    .attr('fill', d => {
+      const stateName = d.properties.name;
+      const abbr = stateNameToAbbr[stateName];
+      const pct = yearData[abbr];
+      if (pct === null || pct === undefined) return '#e5e7eb';
+      return getColor(pct);
+    })
+    .on('mouseenter', function(event, d) {
+      const stateName = d.properties.name;
+      const abbr = stateNameToAbbr[stateName];
+      const pct = yearData[abbr];
+      if (pct !== null && pct !== undefined) {
+        showTooltip(abbr, pct);
+      }
+    })
+    .on('mouseleave', hideTooltip);
 }
 
 function showTooltip(state, pct) {
@@ -415,7 +386,7 @@ function updateStats() {
   `;
 }
 
-drawMap();
+loadAndDrawMap();
 updateStats();
 </script>
 </body>
